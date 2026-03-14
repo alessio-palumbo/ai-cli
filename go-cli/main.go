@@ -14,6 +14,7 @@ func main() {
 		Commands: []*cli.Command{
 			cmd.AskCommand(),
 			cmd.SummarizeCommand(),
+			cmd.ExplainCommand(),
 		},
 	}
 
