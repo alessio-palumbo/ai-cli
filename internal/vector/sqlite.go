@@ -5,6 +5,16 @@ import (
 	"encoding/binary"
 )
 
+func (s *Store) Clear() error {
+	_, err := s.db.Exec(`DELETE FROM embeddings`)
+	if err != nil {
+		return err
+	}
+
+	s.Items = nil
+	return nil
+}
+
 func (s *Store) Save() error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -17,7 +27,7 @@ func (s *Store) Save() error {
 	}()
 
 	stmt, err := tx.Prepare(`
-	    INSERT INTO embeddings(content, filepath, embedding)
+	    INSERT INTO embeddings(filepath, content, embedding)
 	    VALUES(?, ?, ?)
 	`)
 	if err != nil {
@@ -31,7 +41,7 @@ func (s *Store) Save() error {
 			return err
 		}
 
-		_, err = stmt.Exec(item.Content, item.FilePath, blob)
+		_, err = stmt.Exec(item.FilePath, item.Content, blob)
 		if err != nil {
 			return err
 		}
@@ -40,13 +50,13 @@ func (s *Store) Save() error {
 	return tx.Commit()
 }
 
-func (s *Store) Load() ([]Item, error) {
+func (s *Store) Load() error {
 	rows, err := s.db.Query(`
-	    SELECT content, filepath, embedding
+	    SELECT filepath, content, embedding
 	    FROM embeddings
 	`)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
 
@@ -54,29 +64,44 @@ func (s *Store) Load() ([]Item, error) {
 
 	for rows.Next() {
 		var (
-			content  string
 			filepath string
+			content  string
 			blob     []byte
 		)
 
-		err := rows.Scan(&content, &filepath, &blob)
+		err := rows.Scan(&filepath, &content, &blob)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		vec, err := decodeEmbedding(blob)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		items = append(items, Item{
-			Content:   content,
 			FilePath:  filepath,
+			Content:   content,
 			Embedding: vec,
 		})
 	}
 
-	return items, nil
+	s.Items = items
+	return nil
+}
+
+func (s *Store) init() error {
+	query := `
+	    CREATE TABLE IF NOT EXISTS embeddings (
+	        id INTEGER PRIMARY KEY,
+	        filepath TEXT,
+	        content TEXT,
+	        embedding BLOB
+	    );
+	`
+
+	_, err := s.db.Exec(query)
+	return err
 }
 
 func encodeEmbedding(vec []float64) ([]byte, error) {

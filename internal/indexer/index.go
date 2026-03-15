@@ -5,18 +5,16 @@ import (
 	"ai-cli/internal/vector"
 )
 
-func Build(dir string, client *llm.Client) (*vector.Store, error) {
+func Build(dir string, store *vector.Store, client *llm.Client) error {
 	ignore, err := LoadIgnore()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	files, err := Scan(dir, ignore)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	store := &vector.Store{}
 
 	for _, file := range files {
 		content, err := LoadFile(file)
@@ -34,5 +32,5 @@ func Build(dir string, client *llm.Client) (*vector.Store, error) {
 		}
 	}
 
-	return store, nil
+	return nil
 }

@@ -10,8 +10,8 @@ import (
 )
 
 type Item struct {
-	Content   string
 	FilePath  string
+	Content   string
 	Embedding []float64
 }
 
@@ -20,39 +20,32 @@ type Store struct {
 	Items []Item
 }
 
-func OpenDefaultDB() (*sql.DB, error) {
-	err := os.MkdirAll(".ai", 0755)
+func NewStore() (*Store, error) {
+	db, err := openDefaultDB()
 	if err != nil {
 		return nil, err
 	}
 
-	return sql.Open("sqlite3", ".ai/index.db")
-}
-
-func New(db *sql.DB) *Store {
-	return &Store{
-		db: db,
+	s := &Store{db: db}
+	if err := s.init(); err != nil {
+		db.Close()
+		return nil, err
 	}
+	if err := s.Load(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return s, nil
 }
 
-func (s *Store) Init() error {
-	query := `
-	    CREATE TABLE IF NOT EXISTS embeddings (
-	        id INTEGER PRIMARY KEY,
-	        content TEXT,
-	        filepath TEXT,
-	        embedding BLOB
-	    );
-	`
-
-	_, err := s.db.Exec(query)
-	return err
+func (s *Store) Close() error {
+	return s.db.Close()
 }
 
 func (s *Store) Add(chunk, path string, emb []float64) {
 	s.Items = append(s.Items, Item{
-		Content:   chunk,
 		FilePath:  path,
+		Content:   chunk,
 		Embedding: emb,
 	})
 }
@@ -73,7 +66,7 @@ func (s *Store) Search(query []float64, k int) []Item {
 	}
 
 	slices.SortFunc(results, func(i, j result) int {
-		return cmp.Compare(i.Score, j.Score)
+		return cmp.Compare(j.Score, i.Score)
 	})
 
 	var out []Item
@@ -82,4 +75,13 @@ func (s *Store) Search(query []float64, k int) []Item {
 	}
 
 	return out
+}
+
+func openDefaultDB() (*sql.DB, error) {
+	err := os.MkdirAll(".ai", 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.Open("sqlite3", ".ai/index.db")
 }
