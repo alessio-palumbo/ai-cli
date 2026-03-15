@@ -1,17 +1,55 @@
 package vector
 
+import (
+	"cmp"
+	"database/sql"
+	"os"
+	"slices"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
 type Item struct {
-	Text      string
+	Content   string
 	Embedding []float64
 }
 
 type Store struct {
+	db    *sql.DB
 	Items []Item
 }
 
-func (s *Store) Add(text string, emb []float64) {
+func OpenDefaultDB() (*sql.DB, error) {
+	err := os.MkdirAll(".ai", 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.Open("sqlite3", ".ai/index.db")
+}
+
+func New(db *sql.DB) *Store {
+	return &Store{
+		db: db,
+	}
+}
+
+func (s *Store) Init() error {
+	query := `
+	    CREATE TABLE IF NOT EXISTS embeddings (
+	        id INTEGER PRIMARY KEY,
+	        content TEXT,
+	        embedding BLOB
+	    );
+	`
+
+	_, err := s.db.Exec(query)
+	return err
+}
+
+func (s *Store) Add(content string, emb []float64) {
 	s.Items = append(s.Items, Item{
-		Text:      text,
+		Content:   content,
 		Embedding: emb,
 	})
 }
@@ -31,14 +69,9 @@ func (s *Store) Search(query []float64, k int) []Item {
 		})
 	}
 
-	// simple top-k selection
-	for i := range results {
-		for j := i + 1; j < len(results); j++ {
-			if results[j].Score > results[i].Score {
-				results[i], results[j] = results[j], results[i]
-			}
-		}
-	}
+	slices.SortFunc(results, func(i, j result) int {
+		return cmp.Compare(i.Score, j.Score)
+	})
 
 	var out []Item
 	for i := 0; i < k && i < len(results); i++ {
