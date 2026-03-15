@@ -1,19 +1,19 @@
-package cmd
+package command
 
 import (
 	"fmt"
 	"os"
 
-	"ai-cli/ai"
+	"ai-cli/internal/llm"
 	"ai-cli/internal/prompts"
 
 	"github.com/urfave/cli/v2"
 )
 
-func SummarizeCommand() *cli.Command {
+func ExplainCommand() *cli.Command {
 	return &cli.Command{
-		Name:  "summarize",
-		Usage: "summarize a file",
+		Name:  "explain",
+		Usage: "explain a source file",
 		Action: func(c *cli.Context) error {
 			file := c.Args().First()
 			data, err := os.ReadFile(file)
@@ -21,11 +21,11 @@ func SummarizeCommand() *cli.Command {
 				return err
 			}
 
-			prompt, err := prompts.Render("summarize", string(data))
+			prompt, err := prompts.Render(prompts.TemplateExplain, string(data))
 			if err != nil {
 				return err
 			}
-			if err := ai.NewClient().GenerateStream(prompt); err != nil {
+			if err := llm.NewClient().GenerateStream(prompt, os.Stdout); err != nil {
 				return err
 			}
 

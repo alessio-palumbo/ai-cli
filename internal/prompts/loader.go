@@ -6,6 +6,13 @@ import (
 	"text/template"
 )
 
+type promptTemplate string
+
+const (
+	TemplateExplain   promptTemplate = "explain.tmpl"
+	TemplateSummarize promptTemplate = "summarize.tmpl"
+)
+
 //go:embed templates/*.tmpl
 var promptFS embed.FS
 
@@ -17,10 +24,10 @@ type Content struct {
 	Prompt string
 }
 
-func Render(templateName string, prompt string) (string, error) {
+func Render(tmpl promptTemplate, prompt string) (string, error) {
 	var buf bytes.Buffer
-	t := templates.Lookup(templateName + ".tmpl")
-	if err := t.Execute(&buf, Content{Prompt: prompt}); err != nil {
+	if err := templates.Lookup(string(tmpl)).
+		Execute(&buf, Content{Prompt: prompt}); err != nil {
 		return "", err
 	}
 

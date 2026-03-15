@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ai-cli/cmd"
+	"ai-cli/cmd/ai/command"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -12,9 +12,9 @@ func main() {
 		Name:  "ai",
 		Usage: "AI powered developer assistant",
 		Commands: []*cli.Command{
-			cmd.AskCommand(),
-			cmd.SummarizeCommand(),
-			cmd.ExplainCommand(),
+			command.AskCommand(),
+			command.SummarizeCommand(),
+			command.ExplainCommand(),
 		},
 	}
 
