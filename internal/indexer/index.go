@@ -5,8 +5,6 @@ import (
 	"ai-cli/internal/vector"
 )
 
-const defaultChunkCharacters = 400
-
 func Build(dir string, client *llm.Client) (*vector.Store, error) {
 	files, err := Scan(dir)
 	if err != nil {
@@ -21,7 +19,7 @@ func Build(dir string, client *llm.Client) (*vector.Store, error) {
 			continue
 		}
 
-		chunks := Chunk(content, defaultChunkCharacters)
+		chunks := ChunkFile(file, content)
 		for _, chunk := range chunks {
 			embedding, err := client.Embed(chunk)
 			if err != nil {

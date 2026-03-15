@@ -1,6 +1,21 @@
 package indexer
 
-func Chunk(text string, size int) []string {
+import (
+	"path/filepath"
+)
+
+const defaultChunkCharacters = 400
+
+func ChunkFile(path string, content string) []string {
+	switch filepath.Ext(path) {
+	case ".go":
+		return ChunkGo(content)
+	default:
+		return ChunkText(content, 400)
+	}
+}
+
+func ChunkText(text string, size int) []string {
 	var chunks []string
 	runes := []rune(text)
 
