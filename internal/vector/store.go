@@ -11,6 +11,7 @@ import (
 
 type Item struct {
 	Content   string
+	FilePath  string
 	Embedding []float64
 }
 
@@ -39,6 +40,7 @@ func (s *Store) Init() error {
 	    CREATE TABLE IF NOT EXISTS embeddings (
 	        id INTEGER PRIMARY KEY,
 	        content TEXT,
+	        filepath TEXT,
 	        embedding BLOB
 	    );
 	`
@@ -47,9 +49,10 @@ func (s *Store) Init() error {
 	return err
 }
 
-func (s *Store) Add(content string, emb []float64) {
+func (s *Store) Add(chunk, path string, emb []float64) {
 	s.Items = append(s.Items, Item{
-		Content:   content,
+		Content:   chunk,
+		FilePath:  path,
 		Embedding: emb,
 	})
 }

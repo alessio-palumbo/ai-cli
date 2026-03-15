@@ -25,7 +25,7 @@ func Build(dir string, client *llm.Client) (*vector.Store, error) {
 			if err != nil {
 				continue
 			}
-			store.Add(chunk, embedding)
+			store.Add(chunk, file, embedding)
 		}
 	}
 

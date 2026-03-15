@@ -17,8 +17,8 @@ func (s *Store) Save() error {
 	}()
 
 	stmt, err := tx.Prepare(`
-	    INSERT INTO embeddings(content, embedding)
-	    VALUES(?, ?)
+	    INSERT INTO embeddings(content, filepath, embedding)
+	    VALUES(?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func (s *Store) Save() error {
 			return err
 		}
 
-		_, err = stmt.Exec(item.Content, blob)
+		_, err = stmt.Exec(item.Content, item.FilePath, blob)
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func (s *Store) Save() error {
 
 func (s *Store) Load() ([]Item, error) {
 	rows, err := s.db.Query(`
-	    SELECT content, embedding
+	    SELECT content, filepath, embedding
 	    FROM embeddings
 	`)
 	if err != nil {
@@ -54,11 +54,12 @@ func (s *Store) Load() ([]Item, error) {
 
 	for rows.Next() {
 		var (
-			content string
-			blob    []byte
+			content  string
+			filepath string
+			blob     []byte
 		)
 
-		err := rows.Scan(&content, &blob)
+		err := rows.Scan(&content, &filepath, &blob)
 		if err != nil {
 			return nil, err
 		}
@@ -70,6 +71,7 @@ func (s *Store) Load() ([]Item, error) {
 
 		items = append(items, Item{
 			Content:   content,
+			FilePath:  filepath,
 			Embedding: vec,
 		})
 	}
