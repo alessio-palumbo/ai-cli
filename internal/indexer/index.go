@@ -24,11 +24,11 @@ func Build(dir string, store *vector.Store, client *llm.Client) error {
 
 		chunks := ChunkFile(file, content)
 		for _, chunk := range chunks {
-			embedding, err := client.Embed(chunk)
+			embedding, err := client.Embed(chunk.Text)
 			if err != nil {
 				continue
 			}
-			store.Add(file, chunk, embedding)
+			store.Add(file, chunk.Text, chunk.StartLine, chunk.EndLine, embedding)
 		}
 	}
 

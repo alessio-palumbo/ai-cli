@@ -12,6 +12,8 @@ var defaultDBPath = ".ai/index.db"
 
 type Item struct {
 	FilePath  string
+	StartLine int
+	EndLine   int
 	Content   string
 	Embedding []float64
 }
@@ -55,10 +57,12 @@ func (s *Store) Close() error {
 // Add adds a chunk to the in-memory index.
 // The embedding is normalized so that cosine
 // similarity can be computed efficiently during search.
-func (s *Store) Add(path, chunk string, emb []float64) {
+func (s *Store) Add(path, text string, startLine, endLine int, emb []float64) {
 	s.Items = append(s.Items, Item{
 		FilePath:  path,
-		Content:   chunk,
+		StartLine: startLine,
+		EndLine:   endLine,
+		Content:   text,
 		Embedding: normalize(emb),
 	})
 }

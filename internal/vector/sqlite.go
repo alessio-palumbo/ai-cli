@@ -27,8 +27,8 @@ func (s *Store) Save() error {
 	}()
 
 	stmt, err := tx.Prepare(`
-	    INSERT INTO embeddings(filepath, content, embedding)
-	    VALUES(?, ?, ?)
+	    INSERT INTO embeddings(filepath, startline, endline, content, embedding)
+	    VALUES(?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -41,7 +41,9 @@ func (s *Store) Save() error {
 			return err
 		}
 
-		_, err = stmt.Exec(item.FilePath, item.Content, blob)
+		_, err = stmt.Exec(
+			item.FilePath, item.StartLine,
+			item.EndLine, item.Content, blob)
 		if err != nil {
 			return err
 		}
@@ -52,7 +54,7 @@ func (s *Store) Save() error {
 
 func (s *Store) Load() error {
 	rows, err := s.db.Query(`
-	    SELECT filepath, content, embedding
+	    SELECT filepath, startline, endline, content, embedding
 	    FROM embeddings
 	`)
 	if err != nil {
@@ -64,12 +66,13 @@ func (s *Store) Load() error {
 
 	for rows.Next() {
 		var (
-			filepath string
-			content  string
-			blob     []byte
+			item Item
+			blob []byte
 		)
 
-		err := rows.Scan(&filepath, &content, &blob)
+		err := rows.Scan(
+			&item.FilePath, &item.StartLine,
+			&item.EndLine, &item.Content, &blob)
 		if err != nil {
 			return err
 		}
@@ -79,11 +82,8 @@ func (s *Store) Load() error {
 			return err
 		}
 
-		items = append(items, Item{
-			FilePath:  filepath,
-			Content:   content,
-			Embedding: vec,
-		})
+		item.Embedding = vec
+		items = append(items, item)
 	}
 
 	s.Items = items
@@ -95,6 +95,8 @@ func (s *Store) init() error {
 	    CREATE TABLE IF NOT EXISTS embeddings (
 	        id INTEGER PRIMARY KEY,
 	        filepath TEXT,
+	        startline INTEGER,
+	        endline INTEGER,
 	        content TEXT,
 	        embedding BLOB
 	    );
