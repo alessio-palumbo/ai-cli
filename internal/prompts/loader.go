@@ -1,6 +1,7 @@
 package prompts
 
 import (
+	"ai-cli/internal/vector"
 	"bytes"
 	"embed"
 	"text/template"
@@ -11,6 +12,7 @@ type promptTemplate string
 const (
 	TemplateExplain   promptTemplate = "explain.tmpl"
 	TemplateSummarize promptTemplate = "summarize.tmpl"
+	TemplateQuery     promptTemplate = "query.tmpl"
 )
 
 //go:embed templates/*.tmpl
@@ -21,13 +23,19 @@ var templates = template.Must(
 )
 
 type Content struct {
-	Prompt string
+	Prompt  string
+	Context string
 }
 
-func Render(tmpl promptTemplate, prompt string) (string, error) {
+func Render(tmpl promptTemplate, prompt string, context ...vector.Result) (string, error) {
+	content := Content{Prompt: prompt}
+	for _, r := range context {
+		content.Context += r.Content + "\n---\n"
+	}
+
 	var buf bytes.Buffer
 	if err := templates.Lookup(string(tmpl)).
-		Execute(&buf, Content{Prompt: prompt}); err != nil {
+		Execute(&buf, content); err != nil {
 		return "", err
 	}
 

@@ -15,6 +15,10 @@ func AskCommand() *cli.Command {
 		Usage: "ask the AI a question",
 		Action: func(c *cli.Context) error {
 			prompt := strings.Join(c.Args().Slice(), " ")
+			if prompt == "" {
+				return fmt.Errorf("prompt required")
+			}
+
 			if err := llm.NewClient().GenerateStream(prompt, os.Stdout); err != nil {
 				return err
 			}

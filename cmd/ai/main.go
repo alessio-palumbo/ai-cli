@@ -17,6 +17,7 @@ func main() {
 			command.ExplainCommand(),
 			command.IndexCommand(),
 			command.SearchCommand(),
+			command.QueryCommand(),
 		},
 	}
 
