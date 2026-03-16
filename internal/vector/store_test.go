@@ -1,6 +1,10 @@
 package vector
 
-import "testing"
+import (
+	"fmt"
+	"math/rand/v2"
+	"testing"
+)
 
 func TestNewStore(t *testing.T) {
 	// Test initialisation.
@@ -31,7 +35,7 @@ func TestNewStore(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	store := newTestStore(t)
+	store := &Store{}
 	store.Add("a.go", "func A()", []float64{1, 0})
 	store.Add("b.go", "func B()", []float64{0, 1})
 	store.Add("c.go", "func C()", []float64{0.8, 0.2})
@@ -57,4 +61,36 @@ func TestSearch(t *testing.T) {
 			t.Fatalf("expected %s to rank %d, got %s", got, i, want)
 		}
 	}
+}
+
+func BenchmarkSearch(b *testing.B) {
+	var (
+		dim    = 768
+		chunks = 5000
+	)
+
+	store := &Store{Items: make([]Item, 0, chunks)}
+
+	// populate store
+	for i := range chunks {
+		store.Add(
+			fmt.Sprintf("file%d.go", i),
+			"func test() {}",
+			randomVector(dim),
+		)
+	}
+
+	query := randomVector(dim)
+	b.ResetTimer()
+	for b.Loop() {
+		store.Search(query, 5)
+	}
+}
+
+func randomVector(dim int) []float64 {
+	v := make([]float64, dim)
+	for i := range v {
+		v[i] = rand.Float64()
+	}
+	return normalize(v)
 }

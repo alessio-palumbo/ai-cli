@@ -1,10 +1,9 @@
 package vector
 
 import (
-	"cmp"
+	"container/heap"
 	"database/sql"
 	"os"
-	"slices"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -69,20 +68,29 @@ func (s *Store) Add(path, chunk string, emb []float64) {
 // cosine similarity against the normalized embeddings stored in memory.
 func (s *Store) Search(query []float64, k int) []Result {
 	query = normalize(query)
-	results := make([]Result, 0, len(s.Items))
+	h := &resultHeap{}
+	heap.Init(h)
+
 	for _, item := range s.Items {
-		results = append(results, Result{
+		score := cosine(query, item.Embedding)
+		r := Result{
 			Item:  item,
-			Score: cosine(query, item.Embedding),
-		})
+			Score: score,
+		}
+
+		if h.Len() < k {
+			heap.Push(h, r)
+			continue
+		}
+		if score > (*h)[0].Score {
+			heap.Pop(h)
+			heap.Push(h, r)
+		}
 	}
 
-	slices.SortFunc(results, func(i, j Result) int {
-		return cmp.Compare(j.Score, i.Score)
-	})
-
-	if len(results) > k {
-		results = results[:k]
+	results := make([]Result, h.Len())
+	for i := len(results) - 1; i >= 0; i-- {
+		results[i] = heap.Pop(h).(Result)
 	}
 	return results
 }
