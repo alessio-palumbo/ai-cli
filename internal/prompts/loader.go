@@ -4,6 +4,7 @@ import (
 	"ai-cli/internal/vector"
 	"bytes"
 	"embed"
+	"fmt"
 	"text/template"
 )
 
@@ -30,7 +31,13 @@ type Content struct {
 func Render(tmpl promptTemplate, prompt string, context ...vector.Result) (string, error) {
 	content := Content{Prompt: prompt}
 	for _, r := range context {
-		content.Context += r.Content + "\n---\n"
+		content.Context += fmt.Sprintf(
+			"File: %s (lines %d-%d)\n%s\n---\n",
+			r.FilePath,
+			r.StartLine,
+			r.EndLine,
+			r.Content,
+		)
 	}
 
 	var buf bytes.Buffer
