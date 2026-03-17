@@ -33,7 +33,10 @@ func QueryCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 				return err
 			}
 
-			results := store.Search(queryVec, c.Int("k"))
+			results, err := store.Search(queryVec, c.Int("k"))
+			if err != nil {
+				return err
+			}
 			if len(results) == 0 {
 				fmt.Println("No relevant results found")
 				return nil

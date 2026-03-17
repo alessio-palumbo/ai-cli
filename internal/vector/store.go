@@ -26,6 +26,7 @@ type Result struct {
 
 type Store struct {
 	db          *sql.DB
+	loaded      bool
 	ProjectRoot string
 	Items       []Item
 }
@@ -46,11 +47,6 @@ func NewStore(indexesDir string) (*Store, error) {
 
 	s := &Store{db: db, ProjectRoot: projectRoot}
 	if err := s.init(); err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	if err := s.Load(); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -78,7 +74,11 @@ func (s *Store) Add(path, text string, startLine, endLine int, emb []float64) {
 // Search finds the top-k most similar chunks to the given query vector.
 // The query vector is normalized internally and results are ranked using
 // cosine similarity against the normalized embeddings stored in memory.
-func (s *Store) Search(query []float64, k int) []Result {
+func (s *Store) Search(query []float64, k int) ([]Result, error) {
+	if err := s.ensureLoaded(); err != nil {
+		return nil, err
+	}
+
 	query = normalize(query)
 	h := &resultHeap{}
 	heap.Init(h)
@@ -104,7 +104,17 @@ func (s *Store) Search(query []float64, k int) []Result {
 	for i := len(results) - 1; i >= 0; i-- {
 		results[i] = heap.Pop(h).(Result)
 	}
-	return results
+	return results, nil
+}
+
+// ensureLoaded lazily loads the store from the DB only if Items is empty
+// and the store has not already been loaded. This allows in-memory
+// tests and temporary stores without hitting the DB.
+func (s *Store) ensureLoaded() error {
+	if !s.loaded && len(s.Items) == 0 {
+		return s.Load()
+	}
+	return nil
 }
 
 func openDB(indexesDir, projectRoot string) (*sql.DB, error) {

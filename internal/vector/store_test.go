@@ -41,7 +41,7 @@ func TestSearch(t *testing.T) {
 	store.Add("c.go", "func C()", 1, 1, []float64{0.8, 0.2})
 
 	query := []float64{1, 0}
-	results := store.Search(query, 1)
+	results, _ := store.Search(query, 1)
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -50,7 +50,7 @@ func TestSearch(t *testing.T) {
 		t.Fatalf("unexpected result: %s", results[0].Content)
 	}
 
-	results = store.Search(query, 3)
+	results, _ = store.Search(query, 3)
 	if len(results) != 3 {
 		t.Fatalf("expected 3 results, got %d", len(results))
 	}

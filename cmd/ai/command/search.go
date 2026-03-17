@@ -31,7 +31,12 @@ func SearchCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 				return err
 			}
 
-			printResults(store.Search(queryVec, c.Int("k")))
+			results, err := store.Search(queryVec, c.Int("k"))
+			if err != nil {
+				return err
+			}
+
+			printResults(results)
 			return nil
 		},
 	}

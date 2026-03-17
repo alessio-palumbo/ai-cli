@@ -89,6 +89,7 @@ func (s *Store) Load() error {
 	}
 
 	s.Items = items
+	s.loaded = true
 	return nil
 }
 
