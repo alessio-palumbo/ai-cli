@@ -61,15 +61,10 @@ func Render(cfg *Config, prompt string, context ...vector.Result) (string, error
 	if cfg.Structured {
 		prompt += structuredInstructions
 	}
-	td := templateData{Formatting: formattingDirectives, Prompt: prompt}
-	for _, r := range context {
-		td.Context += fmt.Sprintf(
-			"File: %s (lines %d-%d)\n%s\n---\n",
-			r.FilePath,
-			r.StartLine,
-			r.EndLine,
-			r.Content,
-		)
+	td := templateData{
+		Formatting: formattingDirectives,
+		Prompt:     prompt,
+		Context:    vector.JoinResults(context...),
 	}
 
 	var buf bytes.Buffer

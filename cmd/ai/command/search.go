@@ -41,20 +41,8 @@ func SearchCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 				return err
 			}
 
-			printResults(results)
+			fmt.Println(vector.JoinResults(results...))
 			return nil
 		},
-	}
-}
-
-func printResults(results []vector.Result) {
-	for i, r := range results {
-		fmt.Printf(
-			"\n[%d] score=%.3f\n%s\n\n%s\n",
-			i+1,
-			r.Score,
-			r.Content,
-			strings.Repeat("-", 50),
-		)
 	}
 }

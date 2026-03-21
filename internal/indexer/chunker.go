@@ -10,7 +10,6 @@ const (
 	defaultChunkCharacters = 400
 	minChunkSize           = 50
 	chunkPathPrefix        = "file: "
-	chunkLinesPrefix       = "lines: "
 )
 
 type Chunk struct {
@@ -77,16 +76,11 @@ func ChunkText(path string, content string) []Chunk {
 	return chunks
 }
 
-func formatLines(start, end int) string {
-	return fmt.Sprintf("%d-%d", start, end)
-}
-
 func formatChunk(path string, startLine, endLine int, text ...string) string {
-	lines := formatLines(startLine, endLine)
-
 	var sb strings.Builder
+	lines := fmt.Sprintf("(lines %d-%d)", startLine, endLine)
 	totalSize := len(chunkPathPrefix) + len(path) + 1
-	totalSize += len(chunkLinesPrefix) + len(lines) + 1
+	totalSize += len(lines) + 1
 	for _, t := range text {
 		totalSize += len(t) + 1
 	}
@@ -94,9 +88,7 @@ func formatChunk(path string, startLine, endLine int, text ...string) string {
 
 	sb.WriteString(chunkPathPrefix)
 	sb.WriteString(path)
-	sb.WriteByte('\n')
-
-	sb.WriteString(chunkLinesPrefix)
+	sb.WriteString(" ")
 	sb.WriteString(lines)
 	sb.WriteByte('\n')
 

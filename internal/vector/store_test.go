@@ -6,6 +6,45 @@ import (
 	"testing"
 )
 
+func TestJoinResult(t *testing.T) {
+	iA := Item{Content: "file: file_a.go (lines 1-1)\n\nfunc A()"}
+	iB := Item{Content: "file: file_b.go (lines 1-1)\n\nfunc B()"}
+	iC := Item{Content: "file: file_c.go (lines 1-1)\n\nfunc C()"}
+
+	results := []Result{
+		{Item: iA, Score: 0.879},
+		{Item: iB, Score: 0.654},
+		{Item: iC, Score: 0.342},
+	}
+
+	want := `
+[1] (score: 0.879)
+file: file_a.go (lines 1-1)
+
+func A()
+
+---
+
+[2] (score: 0.654)
+file: file_b.go (lines 1-1)
+
+func B()
+
+---
+
+[3] (score: 0.342)
+file: file_c.go (lines 1-1)
+
+func C()
+
+---
+`
+	if got := JoinResults(results...); got != want {
+		t.Fatalf("expected %s got %s", got, want)
+	}
+
+}
+
 func TestNewStore(t *testing.T) {
 	// Test initialisation.
 	store, tmpDir := newTestStore(t)

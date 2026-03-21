@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -41,6 +42,22 @@ type Store struct {
 	loaded      bool
 	ProjectRoot string
 	Items       []Item
+}
+
+// JoinResults formats returns a formatted string of results printing or for LLM prompting.
+// It prepends ranking and score as metadata and assumes file and lines are
+// already present at the top of each chunk (Item.Content).
+func JoinResults(results ...Result) string {
+	var out string
+	for i, r := range results {
+		out += fmt.Sprintf(
+			"\n[%d] (score: %.3f)\n%s\n\n---\n",
+			i+1,
+			r.Score,
+			r.Content,
+		)
+	}
+	return out
 }
 
 // NewStore creates and initializes a vector Store backed by SQLite.

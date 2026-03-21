@@ -7,13 +7,13 @@ import (
 
 func Test_formatChunk(t *testing.T) {
 	got := formatChunk("a/b/c.go", 1, 1, "func A() {}")
-	want := "file: a/b/c.go\nlines: 1-1\n\nfunc A() {}"
+	want := "file: a/b/c.go (lines 1-1)\n\nfunc A() {}"
 	if got != want {
 		t.Fatalf("Expected %s, got %s", want, got)
 	}
 
-	got = formatChunk("a/b/c.go", 1, 1, "A does ...", "func A() {}")
-	want = "file: a/b/c.go\nlines: 1-1\n\nA does ...\nfunc A() {}"
+	got = formatChunk("a/b/c.go", 1, 1, "// A does ...", "func A() {}")
+	want = "file: a/b/c.go (lines 1-1)\n\n// A does ...\nfunc A() {}"
 	if got != want {
 		t.Fatalf("Expected %s, got %s", want, got)
 	}
