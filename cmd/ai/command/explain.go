@@ -8,6 +8,7 @@ import (
 
 	"ai-cli/internal/llm"
 	"ai-cli/internal/prompts"
+	"ai-cli/internal/query"
 	"ai-cli/internal/vector"
 
 	"github.com/urfave/cli/v2"
@@ -27,7 +28,7 @@ func ExplainCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 			content := string(data)
 
 			// Find dependencies chunks to pass as dependencies to LLM.
-			signals := llm.ExtractSignals(file, content)
+			signals := query.ExtractSignals(file, content)
 			embedding, err := llmClient.Embed(signals)
 			if err != nil {
 				return err

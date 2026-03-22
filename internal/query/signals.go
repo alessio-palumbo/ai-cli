@@ -1,11 +1,10 @@
-package llm
+package query
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -66,12 +65,10 @@ func extractGoSignals(src string) string {
 	return strings.Join(out, "\n")
 }
 
-var matchIdentifierChars = regexp.MustCompile(`[a-zA-Z_][a-zA-Z0-9_]{2,}`)
-
 // extractTextSignals extracts meaningful tokens from non-Go files.
 // It attempts to capture identifiers and function-like names.
 func extractTextSignals(src string) string {
-	matches := matchIdentifierChars.FindAllString(src, -1)
+	matches := reIdentifier.FindAllString(src, -1)
 
 	var out []string
 	add := dedupingAdder(&out)
