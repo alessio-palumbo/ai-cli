@@ -45,12 +45,14 @@ var templates = template.Must(template.ParseFS(promptFS, "templates/*.tmpl"))
 type Config struct {
 	Template   promptTemplate
 	Structured bool
+	Summary    string
 }
 
 type templateData struct {
 	Formatting string
 	Prompt     string
 	Context    string
+	Summary    string
 }
 
 func Render(cfg *Config, prompt string, context ...vector.Result) (string, error) {
@@ -65,6 +67,7 @@ func Render(cfg *Config, prompt string, context ...vector.Result) (string, error
 		Formatting: formattingDirectives,
 		Prompt:     prompt,
 		Context:    vector.JoinResults(context...),
+		Summary:    cfg.Summary,
 	}
 
 	var buf bytes.Buffer

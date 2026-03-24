@@ -17,5 +17,10 @@ Focus on the most relevant parts of the context, but ignore clearly unrelated co
 Question:
 {{.Prompt}}
 
+{{if .Summary}}
+Repository Overview:
+{{.Summary}}
+{{end}}
+
 Context:
 {{.Context}}

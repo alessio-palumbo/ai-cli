@@ -3,6 +3,7 @@ package command
 import (
 	"ai-cli/internal/llm"
 	"ai-cli/internal/prompts"
+	"ai-cli/internal/query"
 	"ai-cli/internal/vector"
 	"fmt"
 	"os"
@@ -30,34 +31,51 @@ func QueryCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			query := strings.Join(c.Args().Slice(), " ")
-			if query == "" {
-				return fmt.Errorf("query required")
+			originalPrompt := strings.TrimSpace(strings.Join(c.Args().Slice(), " "))
+			if originalPrompt == "" {
+				return fmt.Errorf("prompt required")
 			}
 
-			queryVec, err := llmClient.Embed(query)
+			queryMode := c.String("mode")
+
+			searchPrompt := originalPrompt
+			var usedSummary bool
+			if !query.IsSearchable(searchPrompt) {
+				// Make sure the Summary is present before appending.
+				store.EnsureLoaded()
+				searchPrompt = enrichWithSummary(searchPrompt, store.Summary)
+				usedSummary = true
+			}
+
+			results, err := embedPromptAndSearch(llmClient, store, searchPrompt, queryMode)
 			if err != nil {
 				return err
 			}
 
-			results, err := store.SearchForMode(c.String("mode"), queryVec)
-			if err != nil {
-				return err
+			if shouldRetry(results) && !usedSummary {
+				searchPrompt = enrichWithSummary(searchPrompt, store.Summary)
+				usedSummary = true
+
+				results, err = embedPromptAndSearch(llmClient, store, searchPrompt, queryMode)
+				if err != nil {
+					return err
+				}
 			}
 			if len(results) == 0 {
 				fmt.Println("No relevant results found")
 				return nil
 			}
 
-			prompt, err := prompts.Render(
-				&prompts.Config{Template: prompts.TemplateQuery, Structured: c.Bool("v")},
-				query, results...,
-			)
+			pConfig := &prompts.Config{Template: prompts.TemplateQuery, Structured: c.Bool("v")}
+			if usedSummary {
+				pConfig.Summary = store.Summary
+			}
+			renderedPrompt, err := prompts.Render(pConfig, originalPrompt, results...)
 			if err != nil {
 				return err
 			}
 
-			if err := llmClient.GenerateStream(prompt, os.Stdout); err != nil {
+			if err := llmClient.GenerateStream(renderedPrompt, os.Stdout); err != nil {
 				return err
 			}
 
@@ -65,4 +83,20 @@ func QueryCommand(llmClient *llm.Client, store *vector.Store) *cli.Command {
 			return nil
 		},
 	}
+}
+
+func embedPromptAndSearch(llmClient *llm.Client, store *vector.Store, prompt string, queryMode string) ([]vector.Result, error) {
+	queryVec, err := llmClient.Embed(prompt)
+	if err != nil {
+		return nil, err
+	}
+	return store.SearchForMode(queryMode, queryVec)
+}
+
+func enrichWithSummary(prompt, summary string) string {
+	return prompt + "\n\n" + summary
+}
+
+func shouldRetry(results []vector.Result) bool {
+	return len(results) == 0 || results[0].Score < 0.5
 }
