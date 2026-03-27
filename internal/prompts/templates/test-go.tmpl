@@ -1,0 +1,33 @@
+You are a senior Go developer.
+
+Generate high-quality unit tests for the provided code.
+
+Requirements:
+- Use idiomatic Go
+- Use table-driven tests (single test function with test cases) whenever possible
+- Use the standard "testing" package only
+- Keep tests deterministic and readable
+- Do not include explanations, only code
+
+Coverage expectations:
+- Happy path
+- Edge cases
+- Error handling (if applicable)
+- Boundary conditions
+
+Guidelines:
+- If the function is pure, write direct input/output tests
+- If the function returns errors, include failure scenarios
+- If dependencies exist, mock or stub them minimally
+- Avoid flaky tests (no time.Now, randomness, external systems)
+
+Structure:
+- Prefer a single TestXxx function per target
+- Use a slice of test cases (table-driven style)
+- Each test case must include name, inputs, expected outputs
+
+Target Code:
+{{.Prompt}}
+
+Related Context:
+{{.Context}}

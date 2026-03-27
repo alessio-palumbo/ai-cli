@@ -11,9 +11,11 @@ import (
 type promptTemplate string
 
 const (
-	TemplateExplain   promptTemplate = "explain.tmpl"
-	TemplateSummarize promptTemplate = "summarize.tmpl"
-	TemplateQuery     promptTemplate = "query.tmpl"
+	TemplateExplain     promptTemplate = "explain.tmpl"
+	TemplateSummarize   promptTemplate = "summarize.tmpl"
+	TemplateQuery       promptTemplate = "query.tmpl"
+	TemplateTestGo      promptTemplate = "test-go.tmpl"
+	TemplateTestGeneric promptTemplate = "test-generic.tmpl"
 )
 
 type promptMode int
