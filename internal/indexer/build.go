@@ -18,6 +18,8 @@ func Build(dir string, store *vector.Store, client *llm.Client, cfg *config.Conf
 	}
 
 	summaryBuilder := NewSummaryBuilder()
+	pipeline := NewEmbedPipeline(client, store, len(files))
+
 	for _, file := range files {
 		content, err := LoadFile(file)
 		if err != nil {
@@ -25,16 +27,10 @@ func Build(dir string, store *vector.Store, client *llm.Client, cfg *config.Conf
 		}
 
 		summaryBuilder.AddFile(file, content)
-		chunks := ChunkFile(file, content)
-		for _, chunk := range chunks {
-			embedding, err := client.Embed(chunk.Text)
-			if err != nil {
-				continue
-			}
-			store.Add(file, chunk.Text, chunk.StartLine, chunk.EndLine, embedding)
-		}
+		pipeline.Submit(embedJob{file: file, content: content})
 	}
 
+	pipeline.Wait()
 	store.AddSummary(summaryBuilder.Build())
 	return nil
 }
