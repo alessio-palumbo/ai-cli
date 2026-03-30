@@ -1,135 +1,175 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestLoadOrCreate(t *testing.T) {
+func TestApply(t *testing.T) {
 	testCases := map[string]struct {
-		setup    func(home string) error
-		wantToml string
-		wantCfg  func(home string) *Config
+		cfg         Config
+		wantErr     bool
+		errContains string
+		check       func(t *testing.T, cfg Config)
 	}{
-		"default config (create)": {
-			setup: func(home string) error {
-				return nil
+		"valid config with default extensions": {
+			cfg: Config{
+				StoreDir:    "/tmp/store",
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:          "gpt",
+					EmbeddingModel: "embed",
+					Temperature:    0.5,
+				},
 			},
-			wantToml: strings.TrimSpace(`
-[llm]
-model = 'llama3'
-embedding_model = 'nomic-embed-text'
-temperature = 0.2
-
-[index]
-include_extensions = []
-ignore_patterns = []
-`),
-			wantCfg: func(home string) *Config {
-				cfg := &Config{}
-				cfg.LLM.Model = defaultLLMModel
-				cfg.LLM.EmbeddingModel = defaultEmbeddingModel
-				cfg.LLM.Temperature = defaultTemperature
-
-				cfg.Index.IncludeExtensions = []string{}
-				cfg.Index.IgnorePatterns = []string{}
-
-				cfg.Extensions = make(map[string]struct{})
-				for _, e := range defaultExtensions {
-					cfg.Extensions[e] = struct{}{}
+			check: func(t *testing.T, cfg Config) {
+				for _, ext := range defaultExtensions {
+					_, ok := cfg.Extensions[ext]
+					assert.True(t, ok, "missing default extension %s", ext)
 				}
-
-				cfg.ProjectRoot = configDirName
-				cfg.StoreDir = filepath.Join(home, configDirName, storeDirName)
-				return cfg
 			},
 		},
-		"custom config (load user input)": {
-			setup: func(home string) error {
-				configDir := filepath.Join(home, configDirName)
-				if err := os.MkdirAll(configDir, 0755); err != nil {
-					return err
-				}
 
-				configPath := filepath.Join(configDir, configFileName)
-				custom := strings.TrimSpace(`
-[llm]
-model = 'custom-model'
-embedding_model = 'custom-embed'
-temperature = 0.5
-
-[index]
-include_extensions = ['.rs']
-ignore_patterns = ['node_modules/']
-`)
-				return os.WriteFile(configPath, []byte(custom), 0644)
+		"include additional extensions with normalization": {
+			cfg: Config{
+				StoreDir:    "/tmp/store",
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:          "gpt",
+					EmbeddingModel: "embed",
+					Temperature:    0.5,
+				},
+				Index: struct {
+					IncludeExtensions []string
+					IgnorePatterns    []string
+				}{
+					IncludeExtensions: []string{"log", ".CFG", "  txt  "},
+				},
 			},
-			wantToml: strings.TrimSpace(`
-[llm]
-model = 'custom-model'
-embedding_model = 'custom-embed'
-temperature = 0.5
-
-[index]
-include_extensions = ['.rs']
-ignore_patterns = ['node_modules/']
-`),
-			wantCfg: func(home string) *Config {
-				cfg := &Config{}
-				cfg.LLM.Model = "custom-model"
-				cfg.LLM.EmbeddingModel = "custom-embed"
-				cfg.LLM.Temperature = 0.5
-
-				cfg.Index.IncludeExtensions = []string{".rs"}
-				cfg.Index.IgnorePatterns = []string{"node_modules/"}
-
-				cfg.Extensions = make(map[string]struct{})
-				for _, e := range defaultExtensions {
-					cfg.Extensions[e] = struct{}{}
+			check: func(t *testing.T, cfg Config) {
+				expected := []string{".log", ".cfg", ".txt"}
+				for _, ext := range expected {
+					_, ok := cfg.Extensions[ext]
+					assert.True(t, ok, "expected extension %s to be present", ext)
 				}
-				cfg.Extensions[".rs"] = struct{}{}
-
-				cfg.ProjectRoot = configDirName
-				cfg.StoreDir = filepath.Join(home, configDirName, storeDirName)
-				return cfg
 			},
+		},
+
+		"error when model missing": {
+			cfg: Config{
+				StoreDir:    "/tmp/store",
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					EmbeddingModel: "embed",
+					Temperature:    0.5,
+				},
+			},
+			wantErr:     true,
+			errContains: "llm model is required",
+		},
+
+		"error when embedding model missing": {
+			cfg: Config{
+				StoreDir:    "/tmp/store",
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:       "gpt",
+					Temperature: 0.5,
+				},
+			},
+			wantErr:     true,
+			errContains: "embedding model is required",
+		},
+
+		"error when temperature out of range": {
+			cfg: Config{
+				StoreDir:    "/tmp/store",
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:          "gpt",
+					EmbeddingModel: "embed",
+					Temperature:    1.5,
+				},
+			},
+			wantErr:     true,
+			errContains: "temperature must be between 0 and 1",
+		},
+
+		"error when project root missing": {
+			cfg: Config{
+				StoreDir: "/tmp/store",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:          "gpt",
+					EmbeddingModel: "embed",
+					Temperature:    0.5,
+				},
+			},
+			wantErr:     true,
+			errContains: "project root is required",
+		},
+
+		"error when store dir missing": {
+			cfg: Config{
+				ProjectRoot: "/project",
+				LLM: struct {
+					Model          string
+					EmbeddingModel string
+					Temperature    float64
+				}{
+					Model:          "gpt",
+					EmbeddingModel: "embed",
+					Temperature:    0.5,
+				},
+			},
+			wantErr:     true,
+			errContains: "store directory is required",
 		},
 	}
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			t.Setenv("HOME", tmpDir)
+			cfg := tc.cfg
+			err := cfg.Apply()
 
-			if tc.setup != nil {
-				require.NoError(t, tc.setup(tmpDir))
+			if tc.wantErr {
+				assert.Error(t, err)
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
+				return
 			}
 
-			cfg, err := LoadOrCreate()
-			require.NoError(t, err)
+			assert.NoError(t, err)
+			assert.NotNil(t, cfg.Extensions)
 
-			// ---- Check TOML output ----
-			configPath := filepath.Join(tmpDir, configDirName, configFileName)
-			b, err := os.ReadFile(configPath)
-			require.NoError(t, err)
-
-			gotToml := strings.TrimSpace(string(b))
-			assert.Equal(t, tc.wantToml, gotToml)
-
-			// ---- Check Config struct ----
-			want := tc.wantCfg(tmpDir)
-
-			assert.Equal(t, want.LLM, cfg.LLM)
-			assert.Equal(t, want.Index, cfg.Index)
-			assert.Equal(t, want.StoreDir, cfg.StoreDir)
-
-			// compare maps safely
-			assert.Equal(t, want.Extensions, cfg.Extensions)
+			if tc.check != nil {
+				tc.check(t, cfg)
+			}
 		})
 	}
 }

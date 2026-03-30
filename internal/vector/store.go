@@ -77,9 +77,6 @@ func JoinResults(results ...Result) string {
 // It opens the database, ensures the required tables exist, and loads
 // the stored embeddings into memory so they can be searched efficiently.
 func NewStore(cfg *config.Config) (*Store, error) {
-	if cfg.DBName == "" {
-		cfg.DBName = projectRootHash(cfg.ProjectRoot)
-	}
 	dbPath := filepath.Join(cfg.StoreDir, cfg.DBName+".sqlite")
 	db, err := openDB(dbPath)
 	if err != nil {
@@ -244,11 +241,6 @@ func mmr(results []Result, k int, lambda float64) []Result {
 	}
 
 	return selected
-}
-
-func projectRootHash(projectRoot string) string {
-	hash := sha1.Sum([]byte(projectRoot))
-	return hex.EncodeToString(hash[:8])
 }
 
 func openDB(path string) (*sql.DB, error) {
