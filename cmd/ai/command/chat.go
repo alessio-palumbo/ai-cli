@@ -14,7 +14,17 @@ func ChatCommand(client *ai.Client) *cli.Command {
 	return &cli.Command{
 		Name:  "chat",
 		Usage: "start a chat with the AI",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "mode",
+				Value: "fast",
+				Usage: fmt.Sprintf("mode determines the algorithm used by RAG [%s, %s, %s]",
+					ai.RetrievalFast, ai.RetrievalBalanced, ai.RetrievalDeep),
+				DefaultText: string(ai.RetrievalFast),
+			},
+		},
 		Action: func(c *cli.Context) error {
+			session := client.NewChatSession(ai.WithRetrievalMode(ai.RetrievalMode(c.String("mode"))))
 			fmt.Println("Starting AI chat. Type 'exit' or Ctrl+C to quit.")
 
 			reader := bufio.NewReader(os.Stdin)
@@ -31,7 +41,7 @@ func ChatCommand(client *ai.Client) *cli.Command {
 					break
 				}
 
-				if err := client.Chat(c.Context, input, ai.WithRetrievalMode(ai.RetrievalFast)); err != nil {
+				if err := session.Send(c.Context, input); err != nil {
 					return catchIndexError(err)
 				}
 				fmt.Println()

@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type Role string
+
+const (
+	RoleUser      Role = "user"
+	RoleAssistant Role = "assistant"
+	RoleSystem    Role = "system"
+	RoleTool      Role = "tool"
+)
 const (
 	defaultHTTPTimeout = 60 * time.Second
 	ollamaURL          = "http://localhost:11434"
@@ -29,6 +37,11 @@ type Client struct {
 	BaseURL         string
 	LLMModel        string
 	EmbeddingsModel string
+}
+
+type Message struct {
+	Role    Role
+	Content string
 }
 
 type generateRequest struct {
@@ -53,7 +66,7 @@ type chatResponse struct {
 }
 
 type chatMessage struct {
-	Role    string `json:"role"`
+	Role    Role   `json:"role"`
 	Content string `json:"content"`
 }
 
@@ -117,23 +130,26 @@ func (c *Client) GenerateStream(prompt string, writer io.Writer) error {
 	return nil
 }
 
-func (c *Client) ChatStream(prompt string, writer io.Writer) error {
+func (c *Client) ChatStream(messages []Message, writer io.Writer) (string, error) {
 	reqBody := chatRequest{
 		Model:    c.LLMModel,
-		Messages: []chatMessage{{Role: "user", Content: prompt}},
+		Messages: toChatMessages(messages),
 	}
+
 	data, err := json.Marshal(reqBody)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	resp, err := c.post(chatEndpoint, data)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
+
+	var fullResponse strings.Builder
 
 	for {
 		var chunk chatResponse
@@ -142,18 +158,32 @@ func (c *Client) ChatStream(prompt string, writer io.Writer) error {
 			break
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 
-		if chunk.Message.Content != "" {
-			_, _ = writer.Write([]byte(chunk.Message.Content))
+		if content := chunk.Message.Content; content != "" {
+			// stream to user
+			_, _ = writer.Write([]byte(content))
+
+			// capture for history
+			fullResponse.WriteString(content)
 		}
+
 		if chunk.Done {
 			break
 		}
 	}
 
-	return nil
+	return fullResponse.String(), nil
+}
+
+func (r Role) Valid() bool {
+	switch r {
+	case RoleUser, RoleAssistant, RoleSystem, RoleTool:
+		return true
+	default:
+		return false
+	}
 }
 
 func (c *Client) post(endpoint string, data []byte) (*http.Response, error) {
@@ -202,4 +232,15 @@ func normalizeModel(name string) string {
 		return name[:i]
 	}
 	return name
+}
+
+func toChatMessages(msgs []Message) []chatMessage {
+	out := make([]chatMessage, len(msgs))
+	for i, m := range msgs {
+		out[i] = chatMessage{
+			Role:    m.Role,
+			Content: m.Content,
+		}
+	}
+	return out
 }

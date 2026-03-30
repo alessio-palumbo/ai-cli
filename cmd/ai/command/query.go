@@ -21,7 +21,7 @@ func QueryCommand(client *ai.Client) *cli.Command {
 			&cli.StringFlag{
 				Name:  "mode",
 				Value: "fast",
-				Usage: fmt.Sprintf("query mode determine the algorithm used by RAG [%s, %s, %s]",
+				Usage: fmt.Sprintf("mode determines the algorithm used by RAG [%s, %s, %s]",
 					ai.RetrievalFast, ai.RetrievalBalanced, ai.RetrievalDeep),
 				DefaultText: string(ai.RetrievalFast),
 			},

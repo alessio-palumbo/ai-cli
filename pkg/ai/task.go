@@ -72,29 +72,6 @@ func (c *Client) Ask(ctx context.Context, prompt string) error {
 	return c.llm.GenerateStream(prompt, c.writer)
 }
 
-// Chat performs a retrieval-augmented generation (RAG) query.
-//
-// It retrieves relevant context from the index and injects it into
-// a chat-oriented prompt template before streaming the response.
-func (c *Client) Chat(ctx context.Context, prompt string, opts ...TaskOption) error {
-	taskCfg := parseTaskOptions(opts...)
-	results, err := c.SemanticSearch(ctx, prompt, taskCfg.retrieval.k, taskCfg.retrieval.useMMR)
-	if err != nil {
-		return err
-	}
-
-	renderedPrompt, err := prompts.Render(
-		&prompts.Config{Template: prompts.TemplateChat},
-		prompt,
-		results...,
-	)
-	if err != nil {
-		return err
-	}
-
-	return c.llm.ChatStream(renderedPrompt, c.writer)
-}
-
 // Summarize generates a summary of the given file.
 //
 // The file content is passed directly to the LLM without retrieval.
