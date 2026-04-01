@@ -29,7 +29,7 @@ func (b *SummaryBuilder) AddFile(path string, content []byte) {
 	}
 
 	signals := query.ExtractSignals(path, content)
-	for _, s := range strings.Split(signals, "\n") {
+	for s := range strings.SplitSeq(signals, "\n") {
 		if s != "" {
 			b.symbols[s] = struct{}{}
 		}

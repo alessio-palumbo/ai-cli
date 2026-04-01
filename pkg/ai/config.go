@@ -77,8 +77,25 @@ type Config struct {
 	// from indexing (e.g. ["vendor/**", "node_modules/**"]).
 	IgnorePatterns []string
 
+	// IndexMaxWorkers controls the maximum number of concurrent workers used
+	// during indexing.
+	//
+	// If set to less than 1, a conservative default value is used to avoid
+	// overwhelming external systems (e.g. LLM/embedding services).
+	//
+	// This default is intentionally not tied to runtime.NumCPU() to keep
+	// concurrency predictable and safe for I/O-bound workloads.
+	IndexMaxWorkers int
+
+	// Logger is used for internal logging.
+	//
+	// If nil, a no-op logger is used by default to avoid panics.
 	Logger *slog.Logger
 
+	// extensions is the internal set of allowed file extensions for indexing.
+	//
+	// It is derived from defaultExtensions and IncludeExtensions,
+	// and should not be modified directly.
 	extensions map[string]struct{}
 }
 

@@ -83,7 +83,12 @@ func (c *Client) Index(ctx context.Context, onProgress func(IndexProgress), onCo
 	c.cfg.Logger.Info("Indexing project", slog.String("root", c.store.ProjectRoot))
 	start := time.Now()
 
-	onProgressFunc := func(p indexer.Progress) {
+	opts := indexer.IndexOptions{
+		IgnorePatterns: c.cfg.IgnorePatterns,
+		Extensions:     c.cfg.extensions,
+		MaxWorkers:     c.cfg.IndexMaxWorkers,
+	}
+	if err := indexer.Build(c.llm, c.store, opts, func(p indexer.Progress) {
 		if onProgress != nil {
 			onProgress(IndexProgress{
 				Done:  p.Done,
@@ -92,8 +97,7 @@ func (c *Client) Index(ctx context.Context, onProgress func(IndexProgress), onCo
 				Size:  p.Size,
 			})
 		}
-	}
-	if err := indexer.Build(c.llm, c.store, c.cfg.IgnorePatterns, c.cfg.extensions, onProgressFunc); err != nil {
+	}); err != nil {
 		return err
 	}
 

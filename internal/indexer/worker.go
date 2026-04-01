@@ -5,12 +5,9 @@ import (
 	"ai-cli/internal/vector"
 	"log/slog"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
-)
-
-const (
-	pipelineWorkes = 4
 )
 
 type EmbedPipeline struct {
@@ -42,7 +39,7 @@ type embedResult struct {
 	err       error
 }
 
-func NewEmbedPipeline(client *llm.Client, store *vector.Store, totalFiles int, onProgress ProgressFunc) *EmbedPipeline {
+func NewEmbedPipeline(client *llm.Client, store *vector.Store, maxWorkers, totalFiles int, onProgress ProgressFunc) *EmbedPipeline {
 	p := &EmbedPipeline{
 		jobs:       make(chan embedJob, 100),
 		results:    make(chan embedResult, 100),
@@ -52,7 +49,7 @@ func NewEmbedPipeline(client *llm.Client, store *vector.Store, totalFiles int, o
 		onProgress: onProgress,
 	}
 
-	for range pipelineWorkes {
+	for range workerPool(maxWorkers) {
 		p.wg.Go(p.worker)
 	}
 
@@ -123,4 +120,20 @@ func (p *EmbedPipeline) collector() {
 			}
 		}
 	}
+}
+
+func workerPool(maxWorkers int) int {
+	if maxWorkers < 1 {
+		n := runtime.NumCPU()
+
+		switch {
+		case n <= 4:
+			return n
+		case n <= 8:
+			return 4
+		default:
+			return 6
+		}
+	}
+	return maxWorkers
 }
