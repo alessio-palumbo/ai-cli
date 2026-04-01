@@ -105,6 +105,9 @@ func (c *Client) GenerateStream(prompt string, writer io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("llm returned status %d", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
@@ -145,6 +148,9 @@ func (c *Client) ChatStream(messages []Message, writer io.Writer) (string, error
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("llm returned status %d", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
@@ -177,22 +183,10 @@ func (c *Client) ChatStream(messages []Message, writer io.Writer) (string, error
 	return fullResponse.String(), nil
 }
 
-func (r Role) Valid() bool {
-	switch r {
-	case RoleUser, RoleAssistant, RoleSystem, RoleTool:
-		return true
-	default:
-		return false
-	}
-}
-
 func (c *Client) post(endpoint string, data []byte) (*http.Response, error) {
 	resp, err := c.client.Post(c.BaseURL+endpoint, contentTypeJSON, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("llm returned status %d", resp.StatusCode)
 	}
 	return resp, err
 }

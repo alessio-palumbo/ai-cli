@@ -7,12 +7,10 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 const (
-	pipelineWorkes          = 4
-	progressRefreshDuration = 500 * time.Millisecond
+	pipelineWorkes = 4
 )
 
 type EmbedPipeline struct {
