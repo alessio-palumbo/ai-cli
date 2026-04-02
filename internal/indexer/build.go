@@ -72,7 +72,7 @@ func Build(client *llm.Client, store *vector.Store, logger *slog.Logger, opts In
 	}
 
 	summaryBuilder := NewSummaryBuilder()
-	pipeline := NewEmbedPipeline(client, store, logger, len(files), opts.MaxWorkers, onProgress)
+	pipeline := NewEmbedPipeline(client, store, logger, opts.MaxWorkers, len(files), onProgress)
 
 	for _, file := range files {
 		content, err := loadFile(file)
