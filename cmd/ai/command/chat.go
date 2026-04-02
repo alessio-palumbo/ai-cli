@@ -2,6 +2,7 @@ package command
 
 import (
 	"ai-cli/pkg/ai"
+	"ai-cli/pkg/spinner"
 	"bufio"
 	"fmt"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func ChatCommand(client *ai.Client) *cli.Command {
+func ChatCommand(client *ai.Client, sw *spinner.StreamWriter) *cli.Command {
 	return &cli.Command{
 		Name:  "chat",
 		Usage: "start a chat with the AI",
@@ -41,10 +42,15 @@ func ChatCommand(client *ai.Client) *cli.Command {
 					break
 				}
 
-				if err := session.Send(c.Context, input); err != nil {
-					return catchIndexError(err)
+				if err := spinner.WrapError(sw, func() error {
+					if err := session.Send(c.Context, input); err != nil {
+						return catchIndexError(err)
+					}
+					fmt.Println()
+					return nil
+				}); err != nil {
+					return err
 				}
-				fmt.Println()
 			}
 
 			return nil

@@ -31,9 +31,12 @@ func SearchCommand(client *ai.Client) *cli.Command {
 			if err != nil {
 				return catchIndexError(err)
 			}
+
 			if result.Status.NoResults {
 				fmt.Println("No relevant results found")
 			}
+
+			fmt.Println()
 			return nil
 		},
 	}

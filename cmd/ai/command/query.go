@@ -2,13 +2,14 @@ package command
 
 import (
 	"ai-cli/pkg/ai"
+	"ai-cli/pkg/spinner"
 	"fmt"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 )
 
-func QueryCommand(client *ai.Client) *cli.Command {
+func QueryCommand(client *ai.Client, sw *spinner.StreamWriter) *cli.Command {
 	return &cli.Command{
 		Name:  "query",
 		Usage: "ask a question over your indexed code",
@@ -28,10 +29,14 @@ func QueryCommand(client *ai.Client) *cli.Command {
 		},
 		Action: func(c *cli.Context) error {
 			prompt := strings.TrimSpace(strings.Join(c.Args().Slice(), " "))
-			result, err := client.Query(c.Context, prompt, ai.WithRetrievalMode(ai.RetrievalMode(c.String("mode"))))
+
+			result, err := spinner.Wrap(sw, func() (ai.TaskResult, error) {
+				return client.Query(c.Context, prompt, ai.WithRetrievalMode(ai.RetrievalMode(c.String("mode"))))
+			})
 			if err != nil {
 				return catchIndexError(err)
 			}
+
 			if result.Status.NoResults {
 				fmt.Println("No relevant results found")
 			}

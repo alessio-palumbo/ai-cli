@@ -4,6 +4,7 @@ import (
 	"ai-cli/cmd/ai/command"
 	"ai-cli/cmd/ai/config"
 	"ai-cli/pkg/ai"
+	"ai-cli/pkg/spinner"
 	"log"
 	"os"
 
@@ -16,7 +17,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client, err := ai.NewClient(cfg, os.Stdout)
+	sw := spinner.New(os.Stdout)
+	client, err := ai.NewClient(cfg, sw)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -26,14 +28,14 @@ func main() {
 		Name:  "ai",
 		Usage: "AI powered developer assistant",
 		Commands: []*cli.Command{
-			command.AskCommand(client),
-			command.SummarizeCommand(client),
-			command.ExplainCommand(client),
+			command.AskCommand(client, sw),
+			command.SummarizeCommand(client, sw),
+			command.ExplainCommand(client, sw),
 			command.IndexCommand(client),
 			command.SearchCommand(client),
-			command.QueryCommand(client),
-			command.ChatCommand(client),
-			command.TestCommand(client),
+			command.QueryCommand(client, sw),
+			command.ChatCommand(client, sw),
+			command.TestCommand(client, sw),
 			command.BenchmarkCommand(client),
 		},
 	}
