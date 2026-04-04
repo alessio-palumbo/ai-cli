@@ -5,6 +5,7 @@ import (
 	"ai-cli/internal/prompts"
 	"ai-cli/internal/query"
 	"ai-cli/internal/vector"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -221,7 +222,7 @@ func (c *Client) Search(ctx context.Context, prompt string, opts ...TaskOption) 
 	}
 
 	taskCfg := parseTaskOptions(opts...)
-	results, err := c.SemanticSearch(ctx, prompt, taskCfg.retrieval.k, taskCfg.retrieval.useMMR)
+	results, err := c.DoSearch(ctx, prompt, taskCfg.retrieval.k, taskCfg.retrieval.useMMR, false)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -263,7 +264,7 @@ func (c *Client) Query(ctx context.Context, prompt string, opts ...TaskOption) (
 		usedSummary = true
 	}
 
-	results, err := c.SemanticSearch(ctx, searchPrompt, taskCfg.retrieval.k, taskCfg.retrieval.useMMR)
+	results, err := c.DoSearch(ctx, searchPrompt, taskCfg.retrieval.k, taskCfg.retrieval.useMMR, false)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -341,6 +342,52 @@ func (c *Client) GenerateTests(ctx context.Context, target Target, opts ...TaskO
 	return TaskResult{}, c.llm.GenerateStream(prompt, c.writer)
 }
 
+// DoSearch retrieves relevant chunks for a given prompt using a symbol-first strategy.
+//
+// It first attempts to extract a code-like identifier (e.g. "TestCommand")
+// and performs a fast in-memory symbol lookup. Symbol matches are high-precision
+// and are preferred when available.
+//
+// If symbol matches are found:
+//   - When preferSymbol=true, they are returned immediately.
+//   - When the number of symbol matches satisfies k, they are returned immediately.
+//   - Otherwise, they are combined with semantic search results to fill the remaining slots.
+//
+// If no symbol is found (or no symbol matches exist), it falls back to semantic
+// (vector) search.
+//
+// This approach balances deterministic identifier-based retrieval with semantic
+// similarity, while limiting noise and preserving result count expectations.
+func (c *Client) DoSearch(ctx context.Context, prompt string, k int, useMMR bool, preferSymbol bool) ([]vector.Result, error) {
+	var symbolResults []vector.Result
+	for _, sym := range query.ExtractIdentifiers(prompt) {
+		results, err := c.store.FindBySymbol(prompt, sym, k)
+		if err != nil {
+			return nil, err
+		}
+
+		symbolResults = append(symbolResults, results...)
+	}
+
+	if len(symbolResults) > 0 && (preferSymbol || len(symbolResults) == k) {
+		return symbolResults, nil
+	}
+
+	// compute semantic budget
+	semanticK := k
+	if len(symbolResults) > 0 {
+		semanticK = k - len(symbolResults)
+	}
+	semanticResults, err := c.SemanticSearch(ctx, prompt, semanticK, useMMR)
+	if err != nil {
+		return nil, err
+	}
+	if len(symbolResults) == 0 {
+		return semanticResults, nil
+	}
+	return mergeResults(symbolResults, semanticResults, k), nil
+}
+
 // SemanticSearch performs a vector similarity search against the index.
 //
 // It embeds the prompt and retrieves the top-k most relevant results.
@@ -406,4 +453,27 @@ func extractTarget(src []byte, fn string) string {
 
 	// fallback if function not found
 	return string(src)
+}
+
+// mergeResults combines symbol-based and semantic search results into a single ranked list.
+//
+// Results are appended and then sorted by score in descending order. The final slice
+// is truncated to at most k elements.
+//
+// It assumes both input slices use the same scoring scale (e.g. cosine similarity in [0,1]).
+// Symbol results are typically higher precision and expected to rank above semantic results,
+// but no explicit boosting is applied here.
+//
+// This function does not deduplicate results. Callers should ensure inputs are distinct
+// if necessary.
+func mergeResults(sym, vec []vector.Result, k int) []vector.Result {
+	results := append(sym, vec...)
+	slices.SortFunc(results, func(a, b vector.Result) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
+
+	if len(results) > k {
+		results = results[:k]
+	}
+	return results
 }

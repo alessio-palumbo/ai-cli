@@ -34,6 +34,21 @@ func IsSearchable(q string) bool {
 	return hasAnchor(q)
 }
 
+// ExtractIdentifiers attempts to find all code-like identifiers (e.g. camelCase or snake_case)
+// within a natural language query.
+//
+// It uses a regex to detect likely symbol names embedded in free text queries,
+// such as "Can you explain TestCommand?" or "how does test_command work".
+//
+// Returns all the matched identifier, or an empty slice if none is found.
+//
+// Note: This is intentionally heuristic and may return false positives,
+// but is designed to favor recall over precision for retrieval.
+func ExtractIdentifiers(q string) []string {
+	matches := reIdentifier.FindAllString(q, -1)
+	return matches
+}
+
 func hasAnchor(q string) bool {
 	return reIdentifier.MatchString(q) ||
 		reFileRef.MatchString(q) ||

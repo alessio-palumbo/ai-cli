@@ -1,6 +1,7 @@
 package vector
 
 import (
+	"cmp"
 	"container/heap"
 	"database/sql"
 	"fmt"
@@ -153,6 +154,62 @@ func (s *Store) EnsureLoaded() error {
 		return s.Load()
 	}
 	return nil
+}
+
+// FindBySymbol searches the in-memory index for chunks matching a given symbol.
+//
+// This provides a fast-path for identifier-based queries (e.g. "TestCommand"),
+// avoiding database access and returning precise, deterministic matches.
+//
+// Matching is exact and case-sensitive. Results are returned in insertion order
+// and limited by the provided 'limit'.
+func (s *Store) FindBySymbol(query, sym string, limit int) ([]Result, error) {
+	if err := s.EnsureLoaded(); err != nil {
+		return nil, err
+	}
+
+	var results []Result
+	for _, it := range s.Items {
+		if it.Symbol == sym {
+			results = append(results, Result{
+				Item:  it,
+				Score: scoreSymbol(it, query),
+			})
+			if len(results) >= limit {
+				break
+			}
+		}
+	}
+
+	// Sort in descending order.
+	slices.SortFunc(results, func(a, b Result) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
+	return results, nil
+}
+
+// scoreSymbol assigns a relevance score to a symbol-matched item.
+//
+// Symbol matches are treated as high-confidence signals and start with a high base score.
+// An additional boost is applied for exact matches (defensive, in case of future fuzzy matching).
+//
+// A small penalty is applied based on chunk length to prefer more focused (shorter) code blocks,
+// which tend to produce more precise LLM outputs.
+//
+// Note: This scoring is intentionally simple and only used to rank multiple symbol matches.
+// It is not comparable to cosine similarity scores from vector search.
+func scoreSymbol(item Item, query string) float64 {
+	score := 1.0
+
+	if item.Symbol == query {
+		score += 1.0 // exact match boost
+	}
+
+	// optional: prefer shorter chunks (more focused)
+	length := item.EndLine - item.StartLine
+	score -= float64(length) * 0.001
+
+	return score
 }
 
 func (s *Store) topK(query []float64, k int) []Result {
